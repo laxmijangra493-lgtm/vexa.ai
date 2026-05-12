@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VEXA | JARVIS INTERFACE</title>
+    <!-- Orbitron Font for that Sci-Fi Look -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --iron-blue: #00d4ff;
+            --dark-bg: #00080a;
+            --glow: 0 0 15px #00d4ff;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--iron-blue);
+            font-family: 'Orbitron', sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            text-transform: uppercase;
+        }
+
+        /* Animated Jarvis Core */
+        .v-core-wrapper {
+            position: relative;
+            width: 350px;
+            height: 350px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .arc-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 2px solid var(--iron-blue);
+            box-shadow: var(--glow), inset var(--glow);
+        }
+
+        .outer-ring {
+            width: 300px;
+            height: 300px;
+            border-style: dashed;
+            animation: rotateCW 15s linear infinite;
+            opacity: 0.4;
+        }
+
+        .middle-ring {
+            width: 250px;
+            height: 250px;
+            border-width: 4px;
+            border-style: double;
+            animation: rotateCCW 10s linear infinite;
+        }
+
+        .inner-core {
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(circle, rgba(0,212,255,0.3) 0%, rgba(0,0,0,0) 70%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .v-text {
+            font-size: 2.5rem;
+            font-weight: bold;
+            letter-spacing: 8px;
+            text-shadow: var(--glow);
+        }
+
+        @keyframes rotateCW { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes rotateCCW { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+        @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.1); opacity: 1; } }
+
+        /* Interface Elements */
+        #status-panel {
+            margin-top: 30px;
+            font-size: 0.8rem;
+            letter-spacing: 3px;
+            height: 20px;
+            color: #fff;
+        }
+
+        #chat-output {
+            margin-top: 15px;
+            width: 70%;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--iron-blue);
+            min-height: 60px;
+            line-height: 1.5;
+        }
+
+        /* Input System */
+        .terminal-input-area {
+            position: fixed;
+            bottom: 40px;
+            display: flex;
+            border-bottom: 2px solid var(--iron-blue);
+            padding: 5px;
+            width: 400px;
+        }
+
+        input {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: 'Orbitron';
+            flex-grow: 1;
+            outline: none;
+            font-size: 1rem;
+            padding: 5px;
+        }
+
+        button {
+            background: transparent;
+            color: var(--iron-blue);
+            border: 1px solid var(--iron-blue);
+            padding: 5px 15px;
+            cursor: pointer;
+            font-family: 'Orbitron';
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: var(--iron-blue);
+            color: #000;
+            box-shadow: var(--glow);
+        }
+
+        .glitch-hint {
+            position: fixed;
+            top: 20px;
+            font-size: 0.6rem;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="glitch-hint">SYSTEM STATUS: ONLINE | READY FOR "HI VEXA"</div>
+
+    <div class="v-core-wrapper">
+        <div class="arc-ring outer-ring"></div>
+        <div class="arc-ring middle-ring"></div>
+        <div class="inner-core">
+            <div class="v-text">VEXA</div>
+        </div>
+    </div>
+
+    <div id="status-panel">INITIALIZING...</div>
+    <div id="chat-output">Awaiting voice command or text input, sir.</div>
+
+    <div class="terminal-input-area">
+        <input type="text" id="userInput" placeholder="ENTER COMMAND..." autocomplete="off">
+        <button onclick="handleInput()">EXECUTE</button>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        // --- API CONFIGURATION ---
+        const GROQ_API_KEY = "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";
+        const WEATHER_API_KEY = ""; // Optional: Add OpenWeatherMap key here
+
+        const statusDisplay = document.getElementById('status-panel');
+        const outputDisplay = document.getElementById('chat-output');
+        const inputField = document.getElementById('userInput');
+
+        // --- 1. JARVIS VOICE (TTS) ---
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            const speech = new SpeechSynthesisUtterance(text);
+            const voices = window.speechSynthesis.getVoices();
+            
+            // Look for a deep male voice
+            let jarvisVoice = voices.find(v => v.name.includes("David") || v.name.includes("Male") || v.name.includes("Google US English"));
+            
+            speech.voice = jarvisVoice || voices[0];
+            speech.pitch = 0.85; // Lower pitch for Jarvis feel
+            speech.rate = 0.95;  // Slightly measured pace
+            
+            window.speechSynthesis.speak(speech);
+        }
+
+        // --- 2. VOICE RECOGNITION (STT) ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = () => { statusDisplay.innerText = "VEXA: LISTENING..."; };
+            
+            recognition.onresult = (event) => {
+                const speechToText = event.results[event.results.length - 1][0].transcript.toLowerCase();
+                console.log("Input detected:", speechToText);
+
+                if (speechToText.includes("hi vexa") || speechToText.includes("vexa")) {
+                    const cleanCommand = speechToText.replace("hi vexa", "").replace("vexa", "").trim();
+                    if (cleanCommand) {
+                        processAgentAction(cleanCommand);
+                    } else {
+                        speak("Yes, sir. I am monitoring.");
+                    }
+                }
+            };
+
+            recognition.onend = () => recognition.start(); // Auto-restart
+            recognition.start();
+        }
+
+        // --- 3. AGENTIC ACTIONS ---
+        async function processAgentAction(command) {
+            statusDisplay.innerText = "VEXA: ANALYZING...";
+            outputDisplay.innerText = `Interpreting: "${command}"`;
+
+            // ACTION: YouTube Tab Management
+            if (command.includes("open youtube")) {
+                speak("Right away, sir. Opening YouTube in a new tab.");
+                window.open("https://www.youtube.com", "_blank");
+                statusDisplay.innerText = "COMMAND EXECUTED";
+                return;
+            }
+
+            // ACTION: Weather Data Fetching
+            if (command.includes("weather")) {
+                if (WEATHER_API_KEY) {
+                    try {
+                        const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=London&appid=${WEATHER_API_KEY}&units=metric`);
+                        const data = await res.json();
+                        const report = `Sir, current conditions in London show ${data.main.temp} degrees with ${data.weather[0].description}.`;
+                        speak(report);
+                        outputDisplay.innerText = report;
+                    } catch (e) {
+                        speak("I'm having trouble accessing the weather satellites, sir.");
+                    }
+                } else {
+                    // If no weather key, ask Groq to explain the weather conceptually
+                    askGroq("The user asked about the weather, but I don't have a weather API key. Explain this to them like Jarvis.");
+                }
+                return;
+            }
+
+            // DEFAULT: Groq Intelligence
+            askGroq(command);
+        }
+
+        // --- 4. GROQ API CONNECTION ---
+        async function askGroq(query) {
+            try {
+                const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
+                    model: "llama-3.1-8b-instant",
+                    messages: [
+                        { 
+                            role: "system", 
+                            content: "You are VEXA, an advanced artificial intelligence. You are helpful, professional, and sophisticated. You refer to the user as 'Sir'. Keep your answers brief and efficient, like Jarvis from Iron Man." 
+                        },
+                        { role: "user", content: query }
+                    ]
+                }, {
+                    headers: { 
+                        "Authorization": `Bearer ${GROQ_API_KEY}`,
+                        "Content-Type": "application/json"
+                    }
+                });
+
+                const aiReply = response.data.choices[0].message.content;
+                outputDisplay.innerText = aiReply;
+                speak(aiReply);
+                statusDisplay.innerText = "VEXA: IDLE";
+            } catch (err) {
+                console.error(err);
+                speak("Apologies sir, I've encountered a link error with the Groq mainframe.");
+            }
+        }
+
+        // --- 5. TEXT INPUT HANDLER ---
+        function handleInput() {
+            const text = inputField.value;
+            if (text) {
+                processAgentAction(text);
+                inputField.value = "";
+            }
+        }
+
+        inputField.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") handleInput();
+        });
+
+        // Ensure voices load
+        window.speechSynthesis.onvoiceschanged = () => { console.log("Voice systems ready."); };
+
+    </script>
+</body>
+</html>
